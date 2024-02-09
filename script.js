@@ -1,6 +1,7 @@
 const c = document.getElementById("canvas");
 const vsSource = document.getElementById("vs").textContent;
-const fsSource = document.getElementById("fs").textContent;
+const fsSource1 = document.getElementById("fs_1").textContent;
+const fsSource2 = document.getElementById("fs_2").textContent;
 const renderer = new THREE.WebGLRenderer({ canvas: c, alpha: true, antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
@@ -14,15 +15,11 @@ const controls = new THREE.OrbitControls(camera, c);
 controls.enablePan = false;
 controls.enableDamping = true;
 controls.dampingFactor = 0.2;
-
-const texLoader = new THREE.TextureLoader();
-const texture = texLoader.load(backGroundTextureData);
-texture.wrapS = THREE.RepeatWrapping;
-texture.wrapT = THREE.RepeatWrapping;
-texture.repeat.set(c.width / c.height, 1);
+controls.minDistance = 4;
+controls.maxDistance = 16;
 
 const uniforms = {
-    u_image: { type: "t", value: texture },
+    u_image: { type: "t", value: null },
     resolution: { type: "v2", value: new THREE.Vector2(c.width, c.height) }
 };
 
@@ -37,8 +34,8 @@ const urls = [
 const cubeTextureLoader = new THREE.CubeTextureLoader();
 const texCube = cubeTextureLoader.load(urls);
 
-const shader = THREE.ShaderLib['cube'];
-shader.uniforms['tCube'].value = texCube;
+const shader = THREE.ShaderLib.cube;
+shader.uniforms.tCube.value = texCube;
 
 const cM = new THREE.ShaderMaterial({
     fragmentShader: shader.fragmentShader,
@@ -51,30 +48,38 @@ const cM = new THREE.ShaderMaterial({
 const cubeM = new THREE.Mesh(new THREE.BoxGeometry(24, 24, 24), cM);
 scene.add(cubeM);
 
-const geometry = new THREE.IcosahedronGeometry(1, 5);
-const material = new THREE.ShaderMaterial({
+const geometry = new THREE.IcosahedronGeometry(1, 6);
+const material_back = new THREE.ShaderMaterial({
+    uniforms: uniforms,
+    side: THREE.BackSide,
+    vertexShader: vsSource,
+    fragmentShader: fsSource1
+});
+const material_front = new THREE.ShaderMaterial({
     uniforms: uniforms,
     side: THREE.FrontSide,
     vertexShader: vsSource,
-    fragmentShader: fsSource
+    fragmentShader: fsSource2
 });
-const mesh = new THREE.Mesh(geometry, material);
-scene.add(mesh);
+const mesh_back = new THREE.Mesh(geometry, material_back);
+scene.add(mesh_back);
+const mesh_front = new THREE.Mesh(geometry, material_front);
+scene.add(mesh_front);
 
 let t = 0;
 (function render() {
-    mesh.visible = false;
+    mesh_front.visible = false;
     renderer.setRenderTarget(sceneRT);
     renderer.render(scene, camera);
 
-    mesh.material.uniforms.u_image.value = sceneRT.texture;
-    mesh.material.side = THREE.BackSide;
-    mesh.visible = true;
+    mesh_back.material.uniforms.u_image.value = sceneRT.texture;
+    mesh_back.visible = true;
     renderer.setRenderTarget(backFaceRT);
     renderer.render(scene, camera);
 
-    mesh.material.uniforms.u_image.value = backFaceRT.texture;
-    mesh.material.side = THREE.FrontSide;
+    mesh_front.material.uniforms.u_image.value = backFaceRT.texture;
+    mesh_back.visible = false;
+    mesh_front.visible = true;
     renderer.setRenderTarget(null);
     renderer.render(scene, camera);
 
