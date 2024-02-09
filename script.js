@@ -66,7 +66,21 @@ scene.add(mesh_back);
 const mesh_front = new THREE.Mesh(geometry, material_front);
 scene.add(mesh_front);
 
-let t = 0;
+window.addEventListener("resize", function () {
+    windowWidth = window.innerWidth;
+    windowHeight = window.innerHeight;
+    camera.aspect = windowWidth / windowHeight;
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+    renderer.setSize(windowWidth, windowHeight);
+    camera.position.set(0, 0, 8);
+    camera.updateProjectionMatrix();
+    sceneRT.setSize(c.width, c.height);
+    backFaceRT.setSize(c.width, c.height);
+
+    mesh_back.material.uniforms.resolution.value.set(c.width, c.height);
+    mesh_front.material.uniforms.resolution.value.set(c.width, c.height);
+})
+
 (function render() {
     mesh_front.visible = false;
     renderer.setRenderTarget(sceneRT);
@@ -84,7 +98,6 @@ let t = 0;
     renderer.render(scene, camera);
 
     controls.update();
-    t++;
     requestAnimationFrame(render);
 })()
 
