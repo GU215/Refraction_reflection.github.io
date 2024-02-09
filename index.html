@@ -4,42 +4,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crystal Ball Simulation</title>
+    <title>Refraction and Reflection Simulation</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <canvas id="canvas"></canvas>
+    <p>
+        Drag : Move<br>
+        Wheel : Zoom / Zoom Out
+    </p>
 </body>
 
 </html>
 
 <script src="https://unpkg.com/three@0.147.0/build/three.min.js"></script>
 <script src="https://unpkg.com/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://unpkg.com/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
 <script id="vs" type="x-shader/x-vertex">
     varying vec3 vNormal;
+    varying vec3 vNormal2;
     varying vec3 vEye;
+    varying mat4 pMat;
     void main() {
         vec4 worldPos = modelMatrix * vec4(position, 1.0);
         vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
         gl_Position = projectionMatrix * mvPosition;
         vEye = normalize(worldPos.xyz - cameraPosition);
         vNormal = normalize(modelMatrix * vec4(normal, 1.0)).xyz;
+        vNormal2 = normalize(normalMatrix * normal).xyz;
+        pMat = modelViewMatrix;
     }
 </script>
-<script id="fs" type="x-shader/x-fragment">
+<script id="fs_1" type="x-shader/x-fragment">
     #define saturate(t) clamp(t, 0.0, 1.0)
+
     varying vec3 vNormal;
+    varying vec3 vNormal2;
     varying vec3 vEye;
     varying vec2 vUV;
-    uniform sampler2D u_image;
     uniform samplerCube tCube;
     uniform vec2 resolution;
     const vec3 grayConst = vec3(0.2125, 0.7154, 0.0721);
     const float shininess = 40.0;
-    const float diffuseness = 0.8;
-    const vec3 light = normalize(vec3(-1, 1, 1));
+    const float diffuseness = 0.2;
+    const vec3 light = normalize(vec3(-1, -1, -1));
     
     float fresnel(vec3 ev, vec3 wv) {
         return pow(1.0 - abs(dot(ev, wv)), 3.0);
@@ -50,26 +58,66 @@
     }
     
     void main() {        
-        vec3 refractedDataRGB;
-        
         vec3 refractedVec = refract(vEye, vNormal, 1.0 / 1.41);
-
-        refractedDataRGB = textureCube(tCube, refractedVec * 0.25).rgb;
+        vec3 refractedDataRGB = textureCube(tCube, refractedVec * 0.2).rgb;
         
         vec3 reflected = reflect(vEye, vNormal);
-        vec3 reflectColor = textureCube(tCube, reflected * 0.25).rgb;
+        vec3 reflectColor = textureCube(tCube, reflected * 0.2).rgb;
         
         float f = fresnel(vEye, vNormal);
 
         vec3 hVec = normalize(vEye - light);
-        float diffuse = clamp(dot(vNormal, light), 0.0, 1.0);
-        float specular = pow(clamp(dot(vNormal, hVec), 0.0, 1.0), shininess);
+        float diffuse = max(0.0, dot(vNormal2, -light));
+        float specular = pow(pow(dot(vNormal2, hVec), 2.0), shininess);
         float lightPower = specular + diffuse * diffuseness;
 
-        vec3 result = mix(refractedDataRGB, reflectColor, f) + lightPower;
+        vec3 result = mix(refractedDataRGB, reflectColor, f) + (lightPower);
         
+        gl_FragColor = vec4(contrast(result), gl_FragCoord.z);
+    }
+</script>
+
+<script id="fs_2" type="x-shader/x-fragment">
+    #define saturate(t) clamp(t, 0.0, 1.0)
+
+    varying vec3 vNormal;
+    varying vec3 vNormal2;
+    varying vec3 vEye;
+    varying mat4 pMat;
+    uniform sampler2D u_image;
+    uniform vec2 resolution;
+    const vec3 grayConst = vec3(0.2125, 0.7154, 0.0721);
+    const float shininess = 40.0;
+    const float diffuseness = 0.2;
+    const vec3 light = normalize(vec3(-1, -1, -1));
+    
+    float fresnel(vec3 ev, vec3 wv) {
+        return pow(1.0 - abs(dot(ev, wv)), 3.0);
+    }    
+
+    vec3 contrast(vec3 rgb) {
+        return mix(vec3(dot(grayConst, rgb)), rgb, 1.05);
+    }
+    
+    void main() {        
+        float data = texture2D(u_image, gl_FragCoord.xy / resolution).w;
+        float thickness = abs(gl_FragCoord.z - data);
+
+        vec3 refractedVec = (pMat * vec4(refract(vEye, vNormal, 1.0 / 1.41), 1.0)).rgb;
+        vec3 refractedDataRGB = texture2D(u_image, gl_FragCoord.xy / resolution + refractedVec.xy * (0.2 + thickness)).rgb;
+        
+        vec3 reflected = (pMat * vec4(reflect(vEye, vNormal), 1.0)).rgb;
+        vec3 reflectColor = texture2D(u_image, gl_FragCoord.xy / resolution + reflected.xy * (0.2 + thickness)).rgb;
+        
+        float f = fresnel(vEye, vNormal);
+
+        vec3 hVec = normalize(vEye - light);
+        float diffuse = max(0.0, dot(vNormal2, -light));
+        float specular = pow(pow(dot(vNormal2, hVec), 2.0), shininess);
+        float lightPower = specular + diffuse * diffuseness;
+
+        vec3 result = mix(refractedDataRGB, reflectColor, f) + (lightPower);
         gl_FragColor = vec4(contrast(result), 1.0);
     }
 </script>
-<script src="modelDatas.js"></script>
 <script src="script.js"></script>
