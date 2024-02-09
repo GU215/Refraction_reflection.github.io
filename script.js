@@ -18,6 +18,21 @@ controls.dampingFactor = 0.2;
 controls.minDistance = 4;
 controls.maxDistance = 16;
 
+window.addEventListener("resize", function () {
+    windowWidth = window.innerWidth;
+    windowHeight = window.innerHeight;
+    camera.aspect = windowWidth / windowHeight;
+    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
+    renderer.setSize(windowWidth, windowHeight);
+    camera.position.set(0, 0, 8);
+    camera.updateProjectionMatrix();
+    sceneRT.setSize(c.width, c.height);
+    backFaceRT.setSize(c.width, c.height);
+
+    mesh_back.material.uniforms.resolution.value.set(c.width, c.height);
+    mesh_front.material.uniforms.resolution.value.set(c.width, c.height);
+})
+
 const uniforms = {
     u_image: { type: "t", value: null },
     resolution: { type: "v2", value: new THREE.Vector2(c.width, c.height) }
@@ -65,21 +80,6 @@ const mesh_back = new THREE.Mesh(geometry, material_back);
 scene.add(mesh_back);
 const mesh_front = new THREE.Mesh(geometry, material_front);
 scene.add(mesh_front);
-
-window.addEventListener("resize", function () {
-    windowWidth = window.innerWidth;
-    windowHeight = window.innerHeight;
-    camera.aspect = windowWidth / windowHeight;
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio));
-    renderer.setSize(windowWidth, windowHeight);
-    camera.position.set(0, 0, 8);
-    camera.updateProjectionMatrix();
-    sceneRT.setSize(c.width, c.height);
-    backFaceRT.setSize(c.width, c.height);
-
-    mesh_back.material.uniforms.resolution.value.set(c.width, c.height);
-    mesh_front.material.uniforms.resolution.value.set(c.width, c.height);
-})
 
 (function render() {
     mesh_front.visible = false;
