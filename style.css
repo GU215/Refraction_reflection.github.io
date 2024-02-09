@@ -7,3 +7,14 @@
 canvas {
     touch-action: none;
 }
+
+p {
+    position: absolute;
+    color: white;
+    top: 0;
+    left: 0;
+    box-sizing: border-box;
+    padding: 5px 10px;
+    background-color: rgba(0, 0, 0, 0.4);
+    border-bottom-right-radius: 5px;
+}
